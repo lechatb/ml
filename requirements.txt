@@ -1,0 +1,7 @@
+numpy
+pytest
+pymorphy2
+nltk
+fuzzywuzzy
+numba
+bs4
