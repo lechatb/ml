@@ -33,12 +33,12 @@ def correct_text(text, dictionary = correct_words):
         
         # If the best match score is above threshold, replace the word with the dictionary word
         if best_match[0] >= 70:
-            words[i] = best_match[1] #??? почему не 0?
+            words[i] = best_match[1] 
 
     return " ".join(words)
 
 
-from numba import njit, int32, types
+from numba import njit, int32, types, prange
 import numpy as np
 
 def edit_distance(s, t):
@@ -98,11 +98,37 @@ def edit_distance_numba(s, t):
 
     return d[n][m]
 
+import re
+
+def process_text(text):
+    words = re.findall(r'\b\w+\b', text)
+    for i, word in enumerate(words):
+        if i < len(words) - 1 and re.match(r'\w+-$', word) and re.match(r'^\w+', words[i+1]):
+            # hyphenated word broken across lines
+            word = word[:-1] + words[i+1]
+            words[i+1] = ''
+        Fxx(word)
 
 #print(correct_text('формации © временном испопнении обязанностей я китронёра Ирафучастчикы эынка'))
 print(edit_distance_numba('городок', 'гоoрдок'))
 
 import timeit
 
-print(timeit.timeit(lambda: edit_distance_numba('городок', 'гоoрдок'), number=10000))
-print(timeit.timeit(lambda: edit_distance('городок', 'гоoрдок'), number=10000))
+print(timeit.timeit(lambda: edit_distance_numba('городокккк', 'гоoрдокккк'), number=10000))
+print(timeit.timeit(lambda: edit_distance('городокккк', 'гоoрдок'), number=10000))
+
+import string
+
+def correct_text(input_string):
+    def split_string(string):
+        return re.findall(r"[\w']+|[ -.,!?;]", string)
+    
+    result_string = (input_string.split('''\n'''))
+    result_string = list(map( split_string, result_string))
+    
+    return result_string
+
+s = '''о Бедном? Гусаре! Замолвите Слово-
+Ваш Муж Не Пускает Меня/ На Постой
+'''
+print( correct_text( s))
