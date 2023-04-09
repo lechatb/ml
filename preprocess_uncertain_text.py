@@ -126,7 +126,6 @@ print(edit_distance_numba('городок', 'гоoрдок'))
 print(timeit.timeit(lambda: edit_distance_numba('городокккк', 'гоoрдокккк'), number=10000))
 print(timeit.timeit(lambda: edit_distance('городокккк', 'гоoрдок'), number=10000))
 
-@njit
 def correct_text(input_string, fix_hyphenation=True):
     def split_string(string):
         return re.findall(r"[\w']+|[ -.,!?;]", string)
@@ -171,6 +170,6 @@ print( check_word('Дшм'))
 s = '''о Бедном? Гусаре! Замолвите Сло-
 во, Ваш Муж Не Пускает Меня/ На Постой
 '''
-#print(correct_text(s))
+print(correct_text(s))
 
 
