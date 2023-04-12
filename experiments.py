@@ -1,19 +1,10 @@
-import pymorphy2
-from nltk.stem.snowball import SnowballStemmer
-import timeit
+import re
 
-morph = pymorphy2.MorphAnalyzer()
-stemmer = SnowballStemmer('russian')
+text = '''Привет, мир! 
+Как дела?'''
 
-lem_it = lambda x: morph.parse(x)[0].normal_form
-stem_it = lambda x: stemmer.stem(x)
-none_it = lambda x: x
+# Разделение текста на слова и знаки препинания
+tokens = re.split(r'(\W+)', text)
 
-arr=['Прогуливаешься' for i in range(1000000)]
-print(len(arr))
-print( lem_it('Прогуливаешься'))
-print( stem_it('Прогуливаешься'))
-
-print(timeit.timeit(lambda: map(lem_it, arr), number=1))
-print(timeit.timeit(lambda:stem_it('Прогуливаешься'), number=500_000))
-print(timeit.timeit(lambda: [lem_it('Прогуливаешься') for i in range(1000000)], number=1))
+# Вывод токенов
+print(tokens)

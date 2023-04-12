@@ -1,11 +1,10 @@
+from functools import partial
 import re
-import string
 import timeit
 import numpy as np
-from numba import njit, int32, types, jit, prange
-from fuzzywuzzy import process, fuzz
+from numba import njit, types
 from zipfile import ZipFile
-import numba as nb
+import multiprocessing as mp
 
 
 def load_dictionary(zipname='unigrams.cyr.lc.zip', filename='unigrams.cyr.lc'):
@@ -27,27 +26,7 @@ def load_dictionary(zipname='unigrams.cyr.lc.zip', filename='unigrams.cyr.lc'):
 correct_words = np.array(load_dictionary())
 
 
-def correct_text(text, dictionary=correct_words):
-    """
-    Corrects a given text string using a dictionary of valid words.
-    """
-    # Split text into individual words
-    words = text.split()
-
-    # Loop over each word and try to match to a word in the dictionary
-    for i, word in enumerate(words):
-        match_scores = [(fuzz.ratio(word, dict_word), dict_word)
-                        for dict_word in dictionary]
-        best_match = max(match_scores, key=lambda x: x[0])
-
-        # If the best match score is above threshold, replace the word with the dictionary word
-        if best_match[0] >= 70:
-            words[i] = best_match[1]
-
-    return " ".join(words)
-
-
-def edit_distance(s, t):
+def edit_distance(s, t):  # Оставил для сравнения быстродействия с версией numba
     n = len(s)
     m = len(t)
 
@@ -76,9 +55,8 @@ def edit_distance(s, t):
     return d[n][m]
 
 
-#@njit(int32(types.unicode_type, types.unicode_type))
-@jit
-def edit_distance_numba(s: types.string, t:types.string):
+@njit(fastmath=True)
+def edit_distance_numba(s: types.unicode_type, t: types.unicode_type):
     n = len(s)
     m = len(t)
 
@@ -106,70 +84,61 @@ def edit_distance_numba(s: types.string, t:types.string):
 
     return d[n][m]
 
-#@nb.njit(nb.types.Tuple((nb.types.int32, nb.types.List(nb.types.unicode_type)))(nb.types.unicode_type))
-#@nb.njit(nogil=True, cache=False)
-def check_word(word: str) -> tuple:
-    global correct_words
-    dictionary=correct_words
 
-    dist = list(map(lambda x: edit_distance_numba(word, x), dictionary))
-    dist = np.asarray(dist)
-    min_dist=np.min(dist)
-    res = dictionary[np.argmin(dist)]
-    return min_dist, res
+def check_word(word) -> tuple:
+    dist = list(map(partial(edit_distance_numba, t=word), correct_words))
+    min_dist = np.min(dist)
+    res = correct_words[np.where(dist == min_dist)[0]]
+    return (min_dist, word, res)
 
 
-#print(correct_text('формации © временном испопнении обязанностей я китронёра Ирафучастчикы эынка'))
-print(edit_distance_numba('городок', 'гоoрдок'))
+def check_words(words: list, cpu_cnt=mp.cpu_count()):
+    with mp.get_context("spawn").Pool(cpu_cnt) as p:
+        res = list(p.map(check_word, words))
+    return res
 
 
-print(timeit.timeit(lambda: edit_distance_numba('городокккк', 'гоoрдокккк'), number=10000))
-print(timeit.timeit(lambda: edit_distance('городокккк', 'гоoрдок'), number=10000))
+def correct_text(input_string):
 
-def correct_text(input_string, fix_hyphenation=True):
-    def split_string(string):
-        return re.findall(r"[\w']+|[ -.,!?;]", string)
+    def split_string(text):
+        return re.findall(r'\w+', text)
 
-    def find_word_left(arr):
-        for i in range(len(arr)):
-            if isinstance(arr[i], str) and arr[i].isalpha():
-                return i
-        return -1  # если такой ячейки не найдено
+    result_string = split_string(input_string.lower())
 
-    def find_word_right(arr):
-        for i in range(-1, -len(arr), -1):
-            if isinstance(arr[i], str) and arr[i].isalpha():
-                return i
-        return -1  # если такой ячейки не найдено
+    double_string = [result_string[i] + result_string[i+1]
+                     for i in range(len(result_string)-1)]
 
-    result_string = (input_string.split('''\n'''))
-    result_string = list(map(split_string, result_string))
-    if fix_hyphenation:
-        for i in range(len(result_string)-1):
-            i1 = find_word_right(result_string[i])
-            i2 = find_word_left(result_string[i+1])
-            if i1 == -1 or i2 == -1:
-                continue
-            w1 = result_string[i][i1]
-            w2 = result_string[i+1][i2]
-            w3 = w1+w2
-            a1=check_word(w1)
-            a2=check_word(w2)
-            a3=check_word(w3)
-            
-            if a1[0] <= a2[0] + a3[0]:
-                result_string[i][i1]=w3
-                result_string[i]=result_string[i][:i1+1]
-                result_string[i+1][i2]=result_string[i+1][i2+1:]
+    result_string = check_words(result_string)
+    double_string = check_words(double_string)
 
-    return result_string
+    processed_string = list()
+    i = 0
+    while i < len(double_string):
+        if double_string[i][0] <= result_string[i][0]+result_string[i+1][0]:
+            processed_string.append(double_string[i])
+            i += 1
+        else:
+            processed_string.append(result_string[i])
+            if i == len(double_string)-1:
+                processed_string.append(result_string[i+1])
+        i += 1
+
+    return processed_string
 
 
-print( check_word('Дшм'))
+if __name__ == '__main__':
+    print(edit_distance_numba('городок', 'гоoрдок'))
 
-s = '''о Бедном? Гусаре! Замолвите Сло-
-во, Ваш Муж Не Пускает Меня/ На Постой
-'''
-print(correct_text(s))
+    print("Время на 10000 сравнений с нумба", timeit.timeit(lambda: edit_distance_numba(
+        'городокккк', 'гоoрдок'), number=10000))
+    print("Время на 10000 сравнений без нумба", timeit.timeit(lambda: edit_distance(
+        'городокккк', 'гоoрдок'), number=10000))
 
-
+    print("Время на 1 корректуру слова", timeit.timeit(lambda: check_word('гоoрдок'), number=10)/10)
+    
+    s = '''о Бетном? Гусаре! Замулвите Сло-
+    во, Ваш Муж Не Пус кает Меня/ На Постой
+    '''
+    def func():
+        print(correct_text(s))
+    print("Время на отработку текста:", timeit.timeit(func, number=1))
