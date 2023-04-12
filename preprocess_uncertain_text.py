@@ -1,3 +1,16 @@
+'''
+author: Alex Borovko
+
+edit_distance(str s, str t)->int - slow implementation of edit distance
+edit_distance_numba(str s, str t)->int - fast implementation of edit distance
+check_word(str word) -> tuple(min_dist, word, [list of words]) - finds correct words close to word with a mistake
+check_words(list of word, [count of processors = all processord]) -> list of corrections to all words in list. Parallel realisatiom
+correct_text(text) -> procoss whole text included splittet words
+
+arcive unigrams.cyr.lc.zip within file unigrams.cyr.lc of national corpse of russian langage mus be near this module
+otherwise rewrite load_dictionary
+]
+'''
 from functools import partial
 import re
 import timeit
