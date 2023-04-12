@@ -3,9 +3,12 @@ author: Alex Borovko
 
 edit_distance(str s, str t)->int - slow implementation of edit distance
 edit_distance_numba(str s, str t)->int - fast implementation of edit distance
-check_word(str word) -> tuple(min_dist, word, [list of words]) - finds correct words close to word with a mistake
-check_words(list of word, [count of processors = all processord]) -> list of corrections to all words in list. Parallel realisatiom
-correct_text(text) -> procoss whole text included splittet words
+check_word(str word, force_search) -> tuple(min_dist, word, [list of words]) - 
+                                    finds correct words close to word with a mistake. Force search - process correct words
+                                    Force search initially = False
+check_words(list of word, [count of processors = all processord]) -> list of corrections to all words in list. 
+                                                                    Parallel realisatiom
+correct_text(text) -> process whole text including splitted words
 
 arcive unigrams.cyr.lc.zip within file unigrams.cyr.lc of national corpse of russian langage mus be near this module
 otherwise rewrite load_dictionary
@@ -98,7 +101,10 @@ def edit_distance_numba(s: types.unicode_type, t: types.unicode_type):
     return d[n][m]
 
 
-def check_word(word) -> tuple:
+def check_word(word, force_search = False) -> tuple:
+    if not force_search:
+        if word in correct_words:
+            return (0, word, np.array([word]))
     dist = list(map(partial(edit_distance_numba, t=word), correct_words))
     min_dist = np.min(dist)
     res = correct_words[np.where(dist == min_dist)[0]]
