@@ -133,7 +133,8 @@ def correct_text(input_string):
     processed_string = list()
     i = 0
     while i < len(double_string):
-        if double_string[i][0] <= result_string[i][0]+result_string[i+1][0]:
+        if double_string[i][0] < result_string[i][0]+result_string[i+1][0]:
+            print(double_string[i], result_string[i], result_string[i+1])
             processed_string.append(double_string[i])
             i += 1
         else:
@@ -156,7 +157,7 @@ if __name__ == '__main__':
     print("Время на 1 корректуру слова", timeit.timeit(lambda: check_word('гоoрдок'), number=10)/10)
     
     s = '''о Бетном? Гусаре! Замулвите Сло-
-    во, Ваш Муж Не Пус кает Меня/ На Постой
+    во, Ваш Муш Не Пус кает Меня/ На Постой
     '''
     def func():
         print(correct_text(s))
